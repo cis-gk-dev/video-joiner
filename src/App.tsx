@@ -26,7 +26,7 @@ const formatBytes = (bytes: number) => {
 
 function App() {
   const [clips, setClips] = useState<Clip[]>([])
-  const [status, setStatus] = useState('Pick two or more videos to get started.')
+  const [status, setStatus] = useState('動画を2つ以上選択して開始してください。')
   const [progressMessage, setProgressMessage] = useState('')
   const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false)
   const [isJoining, setIsJoining] = useState(false)
@@ -72,7 +72,7 @@ function App() {
 
       const ffmpeg = ffmpegRef.current
       setIsLoadingFFmpeg(true)
-      setStatus('Downloading FFmpeg core...')
+      setStatus('FFmpegコアをダウンロード中...')
 
       try {
         const [coreURL, wasmURL] = await Promise.all([
@@ -87,14 +87,14 @@ function App() {
         if (cancelled) throw new Error('Cancelled')
 
         setIsFFmpegReady(true)
-        setStatus('Pick two or more videos to get started.')
+        setStatus('動画を2つ以上選択して開始してください。')
         setProgressMessage('')
         return ffmpeg
       } catch (error) {
         if (cancelled) throw new Error('Cancelled')
         console.error('Failed to load FFmpeg', error)
-        setStatus('Failed to load FFmpeg core.')
-        setProgressMessage((error as Error | undefined)?.message ?? 'Unknown error')
+        setStatus('FFmpegコアの読み込みに失敗しました。')
+        setProgressMessage((error as Error | undefined)?.message ?? '不明なエラー')
         throw error
       } finally {
         if (!cancelled) {
@@ -135,7 +135,7 @@ function App() {
       })),
     ])
 
-    setStatus('Ready to join. Adjust the order if needed.')
+    setStatus('結合の準備ができました。必要に応じて順序を調整してください。')
     setProgressMessage('')
 
     if (fileInputRef.current) {
@@ -162,18 +162,18 @@ function App() {
 
   const clearAll = useCallback(() => {
     setClips([])
-    setStatus('Pick two or more videos to get started.')
+    setStatus('動画を2つ以上選択して開始してください。')
     setProgressMessage('')
   }, [])
 
   const handleJoin = useCallback(async () => {
     if (clips.length < 2) {
-      setStatus('Select at least two videos to join.')
+      setStatus('結合するには少なくとも2つの動画を選択してください。')
       return
     }
 
     setIsJoining(true)
-    setStatus('Preparing files...')
+    setStatus('ファイルを準備中...')
     setProgressMessage('')
 
     if (outputUrl) {
@@ -200,7 +200,7 @@ function App() {
       const listData = new TextEncoder().encode(concatList)
       await ffmpeg.writeFile('filelist.txt', listData)
 
-      setStatus('Joining videos...')
+      setStatus('動画を結合中...')
 
       await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'filelist.txt', '-c', 'copy', 'output.mp4'])
 
@@ -214,8 +214,8 @@ function App() {
       const url = URL.createObjectURL(blob)
 
       setOutputUrl(url)
-      setStatus('Combined video ready!')
-      setProgressMessage('You can preview or download the merged file below.')
+      setStatus('結合した動画の準備ができました！')
+      setProgressMessage('下のプレビューまたはダウンロードから結合したファイルを確認できます。')
 
       // Clean up virtual FS to keep future runs simple
       await Promise.all([
@@ -225,10 +225,10 @@ function App() {
       ])
     } catch (error) {
       console.error('Failed to join videos', error)
-      setStatus('Sorry, the join failed.')
+      setStatus('申し訳ございませんが、結合に失敗しました。')
       setProgressMessage(
         (error as Error | undefined)?.message ??
-          'Check that the clips share the same codec/size – FFmpeg concat with copy requires matching streams.',
+          'クリップが同じコーデック/サイズを共有していることを確認してください – FFmpeg concat with copyでは一致するストリームが必要です。',
       )
     } finally {
       setIsJoining(false)
@@ -241,8 +241,8 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>FFmpeg WASM Video Joiner</h1>
-        <p>Drop in your clips, arrange the order, and let FFmpeg merge them directly in your browser.</p>
+        <h1>FFmpeg WASM 動画結合ツール</h1>
+        <p>動画ファイルを追加し、順序を調整して、ブラウザ上でFFmpegが直接結合します。</p>
       </header>
 
       <section className="uploader">
@@ -253,23 +253,23 @@ function App() {
             accept="video/*"
             multiple
             onChange={handleFileSelection}
-            aria-label="Add video files"
+            aria-label="動画ファイルを追加"
           />
-          <span>Select videos</span>
+          <span>動画を選択</span>
         </label>
         <button type="button" className="ghost" onClick={clearAll} disabled={!clips.length || isJoining}>
-          Clear list
+          リストをクリア
         </button>
       </section>
 
       <section className="selection">
         <div className="section-heading">
-          <h2>Selected clips</h2>
-          {clips.length > 0 && <span>{clips.length} files · {formatBytes(totalSize)}</span>}
+          <h2>選択された動画</h2>
+          {clips.length > 0 && <span>{clips.length} ファイル · {formatBytes(totalSize)}</span>}
         </div>
 
         {clips.length === 0 ? (
-          <p className="empty-state">No videos yet. Use "Select videos" to add your clips.</p>
+          <p className="empty-state">まだ動画がありません。「動画を選択」を使用してクリップを追加してください。</p>
         ) : (
           <ol className="clip-list">
             {clips.map((clip, index) => (
@@ -287,7 +287,7 @@ function App() {
                     className="icon"
                     onClick={() => moveClip(index, -1)}
                     disabled={index === 0 || isJoining}
-                    aria-label={`Move ${clip.file.name} up`}
+                    aria-label={`${clip.file.name}を上に移動`}
                   >
                     ↑
                   </button>
@@ -296,7 +296,7 @@ function App() {
                     className="icon"
                     onClick={() => moveClip(index, 1)}
                     disabled={index === clips.length - 1 || isJoining}
-                    aria-label={`Move ${clip.file.name} down`}
+                    aria-label={`${clip.file.name}を下に移動`}
                   >
                     ↓
                   </button>
@@ -306,7 +306,7 @@ function App() {
                     onClick={() => removeClip(clip.id)}
                     disabled={isJoining}
                   >
-                    Remove
+                    削除
                   </button>
                 </div>
               </li>
@@ -317,7 +317,7 @@ function App() {
 
       <section className="actions">
         <button type="button" className="primary" onClick={handleJoin} disabled={!canJoin}>
-          {isJoining ? 'Joining…' : 'Join videos'}
+          {isJoining ? '結合中…' : '動画を結合'}
         </button>
         <div className="status">
           <p>{status}</p>
@@ -327,18 +327,17 @@ function App() {
 
       {outputUrl && (
         <section className="result">
-          <h2>Preview & download</h2>
+          <h2>プレビューとダウンロード</h2>
           <video controls src={outputUrl} className="preview" />
           <a className="primary" href={outputUrl} download="joined-video.mp4">
-            Download merged video
+            結合した動画をダウンロード
           </a>
         </section>
       )}
 
       <footer className="footnote">
         <p>
-          Videos are processed locally in your browser using WebAssembly. For best results ensure the clips share the
-          same resolution and codec (the concat demuxer with <code>-c copy</code> expects matching streams).
+          動画はWebAssemblyを使用してブラウザ内でローカルに処理されます。最良の結果を得るには、クリップが同じ解像度とコーデックを共有していることを確認してください（concat demuxer with <code>-c copy</code>は一致するストリームを期待します）。
         </p>
       </footer>
     </div>
