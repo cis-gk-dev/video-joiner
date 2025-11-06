@@ -35,6 +35,7 @@ function App() {
 
   const ffmpegRef = useRef<FFmpeg | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const ffmpegReadyPromiseRef = useRef<Promise<FFmpeg> | null>(null)
 
   useEffect(() => {
     return () => {
@@ -44,44 +45,82 @@ function App() {
     }
   }, [outputUrl])
 
+  // Load FFmpeg on mount
+  useEffect(() => {
+    let cancelled = false
+
+    const loadFFmpeg = async (): Promise<FFmpeg> => {
+      if (ffmpegRef.current) {
+        // Check if already loaded by checking if it has the wasm module
+        try {
+          await ffmpegRef.current.loaded
+          return ffmpegRef.current
+        } catch {
+          // Not loaded yet, continue
+        }
+      }
+
+      if (!ffmpegRef.current) {
+        const ffmpeg = new FFmpeg()
+        ffmpeg.on('log', ({ message }) => {
+          if (!cancelled) {
+            setProgressMessage(message)
+          }
+        })
+        ffmpegRef.current = ffmpeg
+      }
+
+      const ffmpeg = ffmpegRef.current
+      setIsLoadingFFmpeg(true)
+      setStatus('Downloading FFmpeg core...')
+
+      try {
+        const [coreURL, wasmURL] = await Promise.all([
+          toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'text/javascript'),
+          toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        ])
+
+        if (cancelled) throw new Error('Cancelled')
+
+        await ffmpeg.load({ coreURL, wasmURL })
+
+        if (cancelled) throw new Error('Cancelled')
+
+        setIsFFmpegReady(true)
+        setStatus('Pick two or more videos to get started.')
+        setProgressMessage('')
+        return ffmpeg
+      } catch (error) {
+        if (cancelled) throw new Error('Cancelled')
+        console.error('Failed to load FFmpeg', error)
+        setStatus('Failed to load FFmpeg core.')
+        setProgressMessage((error as Error | undefined)?.message ?? 'Unknown error')
+        throw error
+      } finally {
+        if (!cancelled) {
+          setIsLoadingFFmpeg(false)
+        }
+      }
+    }
+
+    ffmpegReadyPromiseRef.current = loadFFmpeg()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const ensureFFmpeg = useCallback(async () => {
     if (ffmpegRef.current && isFFmpegReady) {
       return ffmpegRef.current
     }
 
-    if (!ffmpegRef.current) {
-      const ffmpeg = new FFmpeg()
-      ffmpeg.on('log', ({ message }) => {
-        setProgressMessage(message)
-      })
-      ffmpegRef.current = ffmpeg
+    // If FFmpeg is still loading, wait for the promise
+    if (ffmpegReadyPromiseRef.current) {
+      return await ffmpegReadyPromiseRef.current
     }
 
-    const ffmpeg = ffmpegRef.current
-    setIsLoadingFFmpeg(true)
-    setStatus('Downloading FFmpeg core...')
-
-    try {
-      const [coreURL, wasmURL] = await Promise.all([
-        toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'text/javascript'),
-        toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      ])
-
-      await ffmpeg.load({ coreURL, wasmURL })
-
-      setIsFFmpegReady(true)
-      setStatus('FFmpeg ready.')
-      setProgressMessage('')
-
-      return ffmpeg
-    } catch (error) {
-      console.error('Failed to load FFmpeg', error)
-      setStatus('Failed to load FFmpeg core.')
-      setProgressMessage((error as Error | undefined)?.message ?? 'Unknown error')
-      throw error
-    } finally {
-      setIsLoadingFFmpeg(false)
-    }
+    throw new Error('FFmpeg is not ready')
   }, [isFFmpegReady])
 
   const handleFileSelection = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -278,7 +317,7 @@ function App() {
 
       <section className="actions">
         <button type="button" className="primary" onClick={handleJoin} disabled={!canJoin}>
-          {isLoadingFFmpeg ? 'Loading FFmpeg…' : isJoining ? 'Joining…' : 'Join videos'}
+          {isJoining ? 'Joining…' : 'Join videos'}
         </button>
         <div className="status">
           <p>{status}</p>
