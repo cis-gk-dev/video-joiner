@@ -242,7 +242,10 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1>FFmpeg WASM 動画結合ツール</h1>
-        <p>動画ファイルを追加し、順序を調整して、ブラウザ上でFFmpegが直接結合します。</p>
+        <p>
+          動画ファイルを追加し、順序を調整して、ブラウザ上でFFmpegが直接結合します。
+          <strong>すべての動画は同じコーデック・解像度・フレームレートを共有している必要があります。</strong>
+        </p>
       </header>
 
       <section className="uploader">

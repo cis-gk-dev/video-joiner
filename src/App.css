@@ -28,6 +28,13 @@
   color: #4b5563;
 }
 
+.app-header p strong {
+  display: block;
+  margin-top: 0.5rem;
+  color: #92400e;
+  font-weight: 700;
+}
+
 .uploader {
   display: flex;
   flex-wrap: wrap;
